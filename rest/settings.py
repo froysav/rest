@@ -35,9 +35,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_yasg',
     'rest_framework',
     'rest_framework_simplejwt',
-    'reste'
+    'reste',
+    'rest_framework_swagger',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -51,6 +54,10 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'rest.urls'
+
+SWAGGER_SETTINGS = {
+    'VALIDATOR_URL': 'http://localhost:8189',
+}
 
 TEMPLATES = [
     {

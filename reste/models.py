@@ -11,11 +11,20 @@ class Category(models.Model):
         return self.name
 
 
+class Color(models.Model):
+    color = models.CharField(max_length=100)
+    size = models.CharField(max_length=100)
+    brand = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.color
+
+
 class Product(models.Model):
     sale = models.IntegerField(null=True)
     title = models.CharField(max_length=100)
     price = models.FloatField()
-    color = models.CharField(max_length=100)
+    color = models.ForeignKey(Color, on_delete=models.CASCADE)
     image1 = models.ImageField()
     image2 = models.ImageField(null=True)
     image3 = models.ImageField(null=True)
@@ -27,23 +36,6 @@ class Product(models.Model):
         return self.title
 
 
-class Detail(models.Model):
-    sale = models.IntegerField(null=True)
-    title = models.CharField(max_length=100)
-    price = models.FloatField()
-    category = models.CharField(max_length=100, null=True)
-    color = models.CharField(max_length=100)
-    image1 = models.ImageField()
-    image2 = models.ImageField(null=True)
-    image3 = models.ImageField(null=True)
-    image4 = models.ImageField(null=True)
-    image5 = models.ImageField(null=True)
-    gos = models.IntegerField()
-
-    def __str__(self):
-        return self.sale
-
-
 class User(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
@@ -53,3 +45,26 @@ class User(models.Model):
 
     def __str__(self):
         return self.first_name
+
+
+class ShoppingCard(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Shopping Card'
+        verbose_name_plural = 'Shopping Cards'
+
+    def __str__(self):
+        return self.product.title
+
+
+class Like(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.product.title
