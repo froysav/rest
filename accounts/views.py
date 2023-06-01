@@ -42,3 +42,4 @@ class LogoutAPIView(APIView):
         token = RefreshToken(request.user)
         token.blacklist()
         return Response(status=200)
+

@@ -3,15 +3,17 @@ from sqlite3 import IntegrityError
 from django.db.models import Q
 from django.shortcuts import render
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from flask import Flask, request
-from .models import Product, User, Category, ShoppingCard,Color
+from .models import Product, User, Category, ShoppingCard, Color, Comment, Blog, Reviews
 from .serializers import ProductSerializer, CategorySerializer, ShoppingCardForDetailSerializer, ShoppingCardSerializer, \
-    ProductLikeSerializer,ColorSerializer
-
-from rest_framework import status
+    ProductLikeSerializer, ColorSerializer, CommentSerializer, LargeResultsSetPagination, EmailSerializer, \
+    BlogSerializer, ReviewSerializer
+from .tasks import send_email
+from rest_framework import status, generics, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate, login
@@ -45,6 +47,14 @@ class Categori(APIView):
         return Response(products_data.data)
 
 
+class CommentListCreateView(generics.ListCreateAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
 class ColorsAPIView(APIView):
     def post(self, request):
         product_data = ColorSerializer(data=request.data)
@@ -67,6 +77,20 @@ class ProductAPIView(APIView):
 
     def post(self, request):
         product_data = ProductSerializer(data=request.data)
+        product_data.is_valid(raise_exception=True)
+        product_data.save()
+        return Response(status=201)
+
+
+class BlogAPIView(APIView):
+
+    def get(self, request):
+        products = Blog.objects.all()
+        products_data = BlogSerializer(products, many=True)
+        return Response(products_data.data)
+
+    def post(self, request):
+        product_data = BlogSerializer(data=request.data)
         product_data.is_valid(raise_exception=True)
         product_data.save()
         return Response(status=201)
@@ -116,6 +140,42 @@ class Detail(APIView):
             return Response(serializer.data)
         except:
             return Response('This does not exist')
+
+
+class BlogDetailAPIView(APIView):
+    def get(self, request, pk):
+        try:
+            product = Blog.objects.get(pk=pk)
+            serializer = BlogSerializer(product)
+            return Response(serializer.data)
+
+        except:
+            return Response('This does not exist')
+
+
+class BillingsRecordsView(generics.ListAPIView):
+    queryset = Blog.objects.all()
+    serializer_class = BlogSerializer
+    pagination_class = LargeResultsSetPagination
+
+
+# class ReviewsAPIView(APIView):
+#     def post(self, request):
+#         reviews = Reviews.objects.all()
+#         reviews_serializers = ReviewSerializer(reviews)
+#         return Response(status=201)
+
+class ReviewsAPIView(APIView):
+    def post(self, request):
+        product_data = ReviewSerializer(data=request.data)
+        product_data.is_valid(raise_exception=True)
+        product_data.save()
+        return Response(status=201)
+
+    def get(self, request):
+        products = Reviews.objects.all()
+        products_data = ReviewSerializer(products, many=True)
+        return Response(products_data.data)
 
 
 class AddToShoppingCardAPIView(APIView):
@@ -169,3 +229,38 @@ class DeleteFromCardAPIView(APIView):
         except ShoppingCard.DoesNotExist:
             return Response({'message': 'Bunday mahsulot mavjud emas'})
         return Response(status=204)
+
+
+class BillingRecordsView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    pagination_class = LargeResultsSetPagination
+
+
+class SendMail(APIView):
+    permission_classes = ()
+
+    def post(self, request):
+        try:
+            serializer = EmailSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            email = serializer.validated_data.get('email')
+            message = 'Test message'
+            q = send_email.delay(email, message)
+        except Exception as e:
+            return Response({'success': False, 'message': f'{e}'})
+        return Response({'success': True, 'message': 'Yuborildi'})
+
+
+class SearchAPIView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        q = self.request.GET.get('q', None)
+        if q:
+            queryset = queryset.filter(name__iexact=q)
+        return queryset

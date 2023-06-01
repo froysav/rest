@@ -14,6 +14,7 @@ class Category(models.Model):
 class Color(models.Model):
     color = models.CharField(max_length=100)
     size = models.CharField(max_length=100)
+    with_price = models.IntegerField()
     brand = models.CharField(max_length=100)
 
     def __str__(self):
@@ -22,18 +23,15 @@ class Color(models.Model):
 
 class Product(models.Model):
     sale = models.IntegerField(null=True)
-    title = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
     price = models.FloatField()
     color = models.ForeignKey(Color, on_delete=models.CASCADE)
     image1 = models.ImageField()
-    image2 = models.ImageField(null=True)
-    image3 = models.ImageField(null=True)
-    image4 = models.ImageField(null=True)
-    image5 = models.ImageField(null=True)
+    description = models.TextField()
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.title
+        return self.name
 
 
 class User(models.Model):
@@ -45,6 +43,16 @@ class User(models.Model):
 
     def __str__(self):
         return self.first_name
+
+
+class Comment(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Comment by {self.user.username} on {self.product.title}'
 
 
 class ShoppingCard(models.Model):
@@ -68,3 +76,24 @@ class Like(models.Model):
 
     def __str__(self):
         return self.product.title
+
+
+class Reviews(models.Model):
+    comment = models.TextField()
+    name = models.CharField(max_length=100)
+    email = models.EmailField(null=True)
+
+
+    def __str__(self):
+        return self.name
+
+
+class Blog(models.Model):
+    image = models.ImageField()
+    about = models.CharField(max_length=100)
+    description = models.CharField(max_length=100)
+    shop = models.CharField(max_length=100)
+    reviews = models.ForeignKey(Reviews, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.about
