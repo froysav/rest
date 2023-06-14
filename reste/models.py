@@ -1,7 +1,7 @@
 from django.db import models
-
 from django.db import models
 from flask import request
+from django.contrib.auth.models import User
 
 
 class Category(models.Model):
@@ -26,7 +26,7 @@ class Product(models.Model):
     name = models.CharField(max_length=100)
     price = models.FloatField()
     color = models.ForeignKey(Color, on_delete=models.CASCADE)
-    image1 = models.ImageField()
+    image1 = models.ImageField(upload_to='pics')
     description = models.TextField()
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
 
@@ -34,15 +34,15 @@ class Product(models.Model):
         return self.name
 
 
-class User(models.Model):
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    email = models.EmailField()
-    username = models.CharField(max_length=100)
-    password = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.first_name
+# class User(models.Model):
+#     first_name = models.CharField(max_length=100)
+#     last_name = models.CharField(max_length=100)
+#     email = models.EmailField()
+#     username = models.CharField(max_length=100)
+#     password = models.CharField(max_length=100)
+#
+#     def __str__(self):
+#         return self.first_name
 
 
 class Comment(models.Model):
@@ -52,7 +52,7 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'Comment by {self.user.username} on {self.product.title}'
+        return f'Comment by {self.user.username} on {self.product}'
 
 
 class ShoppingCard(models.Model):
@@ -66,7 +66,7 @@ class ShoppingCard(models.Model):
         verbose_name_plural = 'Shopping Cards'
 
     def __str__(self):
-        return self.product.title
+        return self.product
 
 
 class Like(models.Model):
@@ -75,14 +75,13 @@ class Like(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.product.title
+        return self.product.name
 
 
 class Reviews(models.Model):
     comment = models.TextField()
     name = models.CharField(max_length=100)
     email = models.EmailField(null=True)
-
 
     def __str__(self):
         return self.name

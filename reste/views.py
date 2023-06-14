@@ -1,5 +1,6 @@
+from contextvars import Token
 from sqlite3 import IntegrityError
-
+from django.core.mail import send_mail
 from django.db.models import Q
 from django.shortcuts import render
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -8,7 +9,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from flask import Flask, request
-from .models import Product, User, Category, ShoppingCard, Color, Comment, Blog, Reviews
+
+from rest import settings
+from .models import Product, User, Category, ShoppingCard, Color, Comment, Blog, Reviews, Like
 from .serializers import ProductSerializer, CategorySerializer, ShoppingCardForDetailSerializer, ShoppingCardSerializer, \
     ProductLikeSerializer, ColorSerializer, CommentSerializer, LargeResultsSetPagination, EmailSerializer, \
     BlogSerializer, ReviewSerializer
@@ -79,10 +82,45 @@ class ProductAPIView(APIView):
         product_data = ProductSerializer(data=request.data)
         product_data.is_valid(raise_exception=True)
         product_data.save()
+        send_email.delay('roncrist5575@gmail.com', 'We have added a new product check our website')
         return Response(status=201)
 
 
+class CategorylistAPIView(APIView):
+
+    def get(self, request):
+        products = Category.objects.all()
+        products_data = CategorySerializer(products, many=True)
+        return Response(products_data.data)
+
+
+# class LikelistAPIView(APIView):
+#
+#     def get(self, request):
+#         products = Like.objects.all()
+#         products_data = ProductLikeSerializer(products, many=True)
+#         return Response(products_data.data)
+
+class LikelistAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        products = Like.objects.filter(user=user)
+        products_data = ProductLikeSerializer(products, many=True)
+        return Response(products_data.data)
+
+
+class CardlistAPIView(APIView):
+
+    def get(self, request):
+        products = ShoppingCard.objects.all()
+        products_data = ShoppingCardSerializer(products, many=True)
+        return Response(products_data.data)
+
+
 class BlogAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         products = Blog.objects.all()
@@ -94,6 +132,14 @@ class BlogAPIView(APIView):
         product_data.is_valid(raise_exception=True)
         product_data.save()
         return Response(status=201)
+
+    def delete(self, request, pk):
+        try:
+            product = Blog.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response(status=404)
+        product.delete()
+        return Response(status=204)
 
 
 class ProductUpdateDeleteAPIView(APIView):
@@ -152,6 +198,27 @@ class BlogDetailAPIView(APIView):
         except:
             return Response('This does not exist')
 
+    def put(self, request, pk):
+        try:
+            product = Blog.objects.get(pk=pk)
+        except Blog.DoesNotExist:
+            return Response(status=404)
+        product_data = BlogSerializer(product, data=request.data)
+        product_data.is_valid(raise_exception=True)
+        product_data.save()
+        return Response(product_data.data)
+
+
+class ProductDetailAPIView(APIView):
+    def get(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+            serializer = ProductSerializer(product)
+            return Response(serializer.data)
+
+        except:
+            return Response('This does not exist')
+
 
 class BillingsRecordsView(generics.ListAPIView):
     queryset = Blog.objects.all()
@@ -166,6 +233,8 @@ class BillingsRecordsView(generics.ListAPIView):
 #         return Response(status=201)
 
 class ReviewsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         product_data = ReviewSerializer(data=request.data)
         product_data.is_valid(raise_exception=True)
@@ -203,6 +272,20 @@ class LikeAPIView(APIView):
 
         return Response(status=201)
 
+    def get(self, request):
+        products = Like.objects.all()
+        products_data = ProductLikeSerializer(products, many=True)
+        return Response(products_data.data)
+
+    def delete(self, request):
+        user_id = request.user.id
+        like = Like.objects.filter(user_id=user_id).first()
+        if like:
+            like.delete()
+            return Response(status=204)
+        else:
+            return Response(status=404)
+
 
 class UserShoppingCardAPIView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -238,29 +321,45 @@ class BillingRecordsView(generics.ListAPIView):
 
 
 class SendMail(APIView):
-    permission_classes = ()
-
     def post(self, request):
         try:
             serializer = EmailSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             email = serializer.validated_data.get('email')
             message = 'Test message'
-            q = send_email.delay(email, message)
+            send_email.delay(email, message)
         except Exception as e:
             return Response({'success': False, 'message': f'{e}'})
-        return Response({'success': True, 'message': 'Yuborildi'})
+        return Response({'success': True, 'message': 'Sent'})
 
+
+# class SearchAPIView(generics.ListAPIView):
+#     queryset = Product.objects.all()
+#     serializer_class = ProductSerializer
+#     filter_backends = [filters.SearchFilter]
+#     search_fields = ['name']
+#
+#     def get_queryset(self):
+#         queryset = super().get_queryset()
+#         q = self.request.GET.get('q', None)
+#         if q:
+#             queryset = queryset.filter(name__icontains=q)
+#         return queryset
 
 class SearchAPIView(generics.ListAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
+    search_fields = ['name', 'description', 'category__name', 'price']
 
     def get_queryset(self):
         queryset = super().get_queryset()
         q = self.request.GET.get('q', None)
         if q:
-            queryset = queryset.filter(name__iexact=q)
+            queryset = queryset.filter(
+                Q(name__icontains=q) |
+                Q(description__icontains=q) |
+                Q(category__name__icontains=q) |
+                Q(price__icontains=q)
+            )
         return queryset

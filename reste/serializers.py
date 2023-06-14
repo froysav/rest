@@ -2,7 +2,7 @@ from amqp import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer, Serializer, EmailField
-from .models import Product, User, Category, ShoppingCard, Like, Color, Comment, Blog, Reviews
+from .models import Product, User, ShoppingCard, Like, Color, Comment, Blog, Reviews, Category
 from rest_framework import serializers, pagination
 
 
@@ -19,8 +19,8 @@ class ColorSerializer(ModelSerializer):
 
 
 class ProductSerializer(ModelSerializer):
-    category = CategorySerializer()
-    color = ColorSerializer
+    # category = CategorySerializer()
+    # color = ColorSerializer
 
     discounted_price = serializers.SerializerMethodField()
 
