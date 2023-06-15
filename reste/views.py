@@ -326,7 +326,7 @@ class SendMail(APIView):
             serializer = EmailSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             email = serializer.validated_data.get('email')
-            message = 'Test message'
+            message = 'Test message '
             send_email.delay(email, message)
         except Exception as e:
             return Response({'success': False, 'message': f'{e}'})
