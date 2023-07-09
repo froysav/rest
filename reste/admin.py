@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from reste.models import Product, Category, ShoppingCard, Like, Color, Comment, Blog, Reviews
+from reste.models import Product, Category, ShoppingCard, Like, Color, Comment, Blog, Reviews,User
 
 admin.site.register(Product)
 admin.site.register(Blog)

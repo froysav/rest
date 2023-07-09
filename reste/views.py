@@ -6,10 +6,7 @@ from django.shortcuts import render
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from flask import Flask, request
-
+import datetime
 from rest import settings
 from .models import Product, User, Category, ShoppingCard, Color, Comment, Blog, Reviews, Like
 from .serializers import ProductSerializer, CategorySerializer, ShoppingCardForDetailSerializer, ShoppingCardSerializer, \
@@ -78,11 +75,28 @@ class ProductAPIView(APIView):
         products_data = ProductSerializer(products, many=True)
         return Response(products_data.data)
 
+    # def post(self, request):
+    #     product_data = ProductSerializer(data=request.data)
+    #     product_data.is_valid(raise_exception=True)
+    #     product_data.save()
+    #     current_date = datetime.datetime.now()
+    #     finish_date = current_date + datetime.timedelta(minutes=1)
+    #     print("Finish date:", finish_date)
+    #     send_email.delay('roncrist5575@gmail.com', 'We have added a new product check our website')
+    #     return Response(status=201)
     def post(self, request):
         product_data = ProductSerializer(data=request.data)
         product_data.is_valid(raise_exception=True)
-        product_data.save()
-        send_email.delay('roncrist5575@gmail.com', 'We have added a new product check our website')
+        product = product_data.save()
+
+        current_date = datetime.datetime.now()
+        finish_date = current_date + datetime.timedelta(minutes=1)
+        print("Finish date:", finish_date)
+
+        # Schedule the email task to be executed after 1 minute
+        send_email.apply_async(args=['roncrist5575@gmail.com', 'We have added a new product. Check our website'],
+                                    eta=finish_date)
+
         return Response(status=201)
 
 
@@ -326,7 +340,7 @@ class SendMail(APIView):
             serializer = EmailSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             email = serializer.validated_data.get('email')
-            message = 'Test message '
+            message = 'Test message'
             send_email.delay(email, message)
         except Exception as e:
             return Response({'success': False, 'message': f'{e}'})
